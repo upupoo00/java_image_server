@@ -120,8 +120,12 @@
                     data: data,
                     // context: this,
                     success: function(data, status) {
-                        app.getImages();
-                        // alert("上传成功");
+                        if(data.ok){
+                            app.getImages();
+                            // alert("上传成功");
+                        }else {
+                            alert(data.msg);
+                        }
                     },
                     error: function (err, textStatus, throwable) {
                         console.error(err)

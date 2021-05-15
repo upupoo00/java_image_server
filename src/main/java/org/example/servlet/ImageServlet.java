@@ -3,6 +3,7 @@ package org.example.servlet;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.example.dao.ImageDAO;
+import org.example.exception.AppException;
 import org.example.model.Image;
 import org.example.util.Util;
 
@@ -39,9 +40,8 @@ public class ImageServlet extends HttpServlet {
         req.setCharacterEncoding("UTF-8");
         resp.setCharacterEncoding("UTF-8");
         resp.setContentType("application/json");
-//        long size = 0; // 获取上传的文件大小
-//        String ContentType = null; // 获取每个 part 的数据格式
-//        String name = null; //获取上传的文件名
+        //构造要返回的响应体信息，也可以创建一个类
+        Map<String,Object> map = new HashMap<>();
 
         try {
             //1.解析请求数据
@@ -63,7 +63,7 @@ public class ImageServlet extends HttpServlet {
             //如果已上传该图片（相同的md5值），就不能插入数据和保存本地
             int num = ImageDAO.queryCount(md5);
             if(num>=1){
-                throw new RuntimeException("上传图片重复");
+                throw new AppException("上传图片重复");
             }
 
             //2.根据请求数据完成业务处理
@@ -79,9 +79,16 @@ public class ImageServlet extends HttpServlet {
             image.setMd5(md5);
             image.setPath("/"+md5);
             int n = ImageDAO.insert(image);
+            map.put("ok",true);
         }  catch (Exception e) {
             e.printStackTrace();
-            resp.setStatus(500);
+            map.put("ok",false);
+            if(e instanceof AppException){
+                map.put("msg",e.getMessage());
+            }else {
+                map.put("msg","未知错误，请联系管理员");
+            }
+//            resp.setStatus(500);
             //报错可以往body中写错误信息，如果没有，就只能检查后台日志信息
             //插入数据操作，字段太多，最好是把字段转为对象的属性
         }
@@ -94,8 +101,9 @@ public class ImageServlet extends HttpServlet {
 //        data.put("name",name);
 //        String json = m.writeValueAsString(data);
 //        resp.getWriter().println(json);
-        ok(resp);
-
+//        ok(resp);
+        String s = Util.serialize(map);
+        resp.getWriter().println(s);
     }
 
     @Override
