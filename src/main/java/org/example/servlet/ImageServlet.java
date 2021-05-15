@@ -3,6 +3,8 @@ package org.example.servlet;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.example.dao.ImageDAO;
+import org.example.model.Image;
+import org.example.util.Util;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.MultipartConfig;
@@ -11,12 +13,14 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.Part;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -28,7 +32,7 @@ import java.util.Map;
 @MultipartConfig
 public class ImageServlet extends HttpServlet {
 
-    private static final String IMAGE_DIR = "C:\\Users\\CLearLove\\Desktop\\bit\\图片服务器\\Img";
+    public static final String IMAGE_DIR = "D:/image";
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -63,15 +67,23 @@ public class ImageServlet extends HttpServlet {
             }
 
             //2.根据请求数据完成业务处理
-            //TODO
             //2-1: 保存上传图片为服务端本地文件
             //上传的图片名可能重复，但md5是唯一的
-            p.write(IMAGE_DIR+"-"+md5);
+            p.write(IMAGE_DIR+"/"+md5);
             //2-2: 图片信息保存在数据库———>后续查询图片列表接口要用
+            Image image = new Image();
+            image.setImageName(name);
+            image.setContentType(ContentType);
+            image.setSize(size);
+            image.setUploadTime(uploadTime);
+            image.setMd5(md5);
+            image.setPath("/"+md5);
+            int n = ImageDAO.insert(image);
         }  catch (Exception e) {
             e.printStackTrace();
             resp.setStatus(500);
             //报错可以往body中写错误信息，如果没有，就只能检查后台日志信息
+            //插入数据操作，字段太多，最好是把字段转为对象的属性
         }
 
         //3.返回响应数据
@@ -82,6 +94,50 @@ public class ImageServlet extends HttpServlet {
 //        data.put("name",name);
 //        String json = m.writeValueAsString(data);
 //        resp.getWriter().println(json);
+        ok(resp);
 
+    }
+
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        req.setCharacterEncoding("UTF-8");
+        resp.setCharacterEncoding("UTF-8");
+        resp.setContentType("application/json");
+
+        String id = req.getParameter("imageId");
+        Object o = null;
+        //查询所有图片  o = list<Image>
+        if(id == null){
+            o = ImageDAO.queryAll();
+        }else {
+            //查询指定id的一个图片 :o = Image对象
+            o = ImageDAO.queryOne(Integer.parseInt(id));
+        }
+        String json= Util.serialize(o);
+        resp.getWriter().println(json);
+    }
+
+    @Override
+    protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        req.setCharacterEncoding("UTF-8");
+        resp.setCharacterEncoding("UTF-8");
+        resp.setContentType("application/json");
+        // 1. 获取请求中的 imageId
+        String imageId = req.getParameter("imageId");
+        // 2. 创建 ImageDao 对象, 查找对应的 Image 对象
+        Image image = ImageDAO.queryOne(Integer.parseInt(imageId));
+        //TODO:数据库删除和本地硬盘删除使用事务保证ACID
+
+        // 3. 删除数据库中的数据
+        int n = ImageDAO.delete(Integer.parseInt(imageId));
+        // 4. 删除磁盘上的文件
+        String path = IMAGE_DIR+image.getPath();
+        File f = new File(path);
+        f.delete();
+        // 5. 写回响应
+        ok(resp);
+    }
+    public static void ok(HttpServletResponse resp) throws IOException {
+        resp.getWriter().println("{\"ok\":true}");
     }
 }
