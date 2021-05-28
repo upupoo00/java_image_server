@@ -50,7 +50,6 @@ public class ImageServlet extends HttpServlet {
              long size = p.getSize();
              String ContentType = p.getContentType();
              String name = p.getSubmittedFileName();
-
             //图片上传时间，数据库保存的是字符串，用日期格式化类来转换。
             Date date = new Date();
             DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
